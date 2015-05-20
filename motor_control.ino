@@ -4,8 +4,13 @@
 Servo myservo1; // create servo object to control a RoboClaw channel
 Servo myservo2; // create servo object to control a RoboClaw channel
 
+/* KEGBOT MODES */
+const int USER_DRIVE = 1;
+const int ROBOT_DRIVE = 2;
+
 char command = 'S';
 char commands[256];
+int command_index = 0;
 
 int speed_left = 0, speed_right = 0;
 
@@ -18,19 +23,15 @@ float distance = 0;
 
 int have_command = 0;
 
-uint8_t i = 0;
+int count = 0;
+
+int mode = USER_DRIVE;
 
 void setup()
 {
-      pinMode(13, OUTPUT);
       
     Serial.begin(9600);
     
-//    
-//    while (!Serial) {
-//      ; // wait for serial port to connect. Needed for Leonardo only
-//    }
-//    
     myservo1.attach(5);
     myservo2.attach(6);
     
@@ -38,8 +39,6 @@ void setup()
       irPin[i] = i;
       readings[i] = 0;
     }
-    
-    //establishContact();  // send a byte to establish contact until receiver responds 
     
 }
 
@@ -49,13 +48,19 @@ void loop()
     readCommand2();
     
     readIr();
-    sendReadings();
     
-    //wander();
+    if(count < 1) {
+        sendReadings();
+    }
     
-    moveRobot2();
+    if(mode == USER_DRIVE) {
+        moveRobot2();
+    } else {
+        wander();
+    }
     
-    //Serial.write('t');
+    count++;
+    count%=75;
     
 }
 
@@ -69,16 +74,14 @@ void wander() {
     }
   }
   
-  if(minDistance >= 75) {
+  if(minDistance >= 30) {
     //forward
-    myservo1.writeMicroseconds(1425);
-    myservo2.writeMicroseconds(1425);
-    //Serial.println("Forward!");
+    myservo1.writeMicroseconds(1450);
+    myservo2.writeMicroseconds(1450);
   } else {
     //turn right
-    myservo1.writeMicroseconds(1575);
-    myservo2.writeMicroseconds(1575);
-    //Serial.println("Right!");
+    myservo1.writeMicroseconds(1450);
+    myservo2.writeMicroseconds(1550);
   }
   
 }
@@ -107,16 +110,11 @@ void sendReadings() {
   
   Serial.println("]}");
   
-  //Serial.print("{readings:{0:");
-  //Serial.print(readings[0]);
-  //Serial.print(",1:");
-  //Serial.print("\t\t\t");
-  //Serial.println(readings[1]);
-  //Serial.println("}}");
 }
 
 void readCommand2() {
   
+  int result;
   char character;
   
   while (Serial.available()) {
@@ -125,16 +123,8 @@ void readCommand2() {
     character = Serial.read();
     
     if(character > 0) {
-      
-      commands[i] = character;
-      
-      i++;
-      
-      //command = Serial.read();
-      
-      //Serial.print('A');
-      //delay(300);
-      
+      commands[command_index] = character;
+      command_index++;
     }
     
     if(character == '\n') {
@@ -144,21 +134,15 @@ void readCommand2() {
   
   if(have_command) {
     
-    //Serial.println(commands);
-    int result = sscanf(commands,"{left:%d,right:%d}", &speed_left, &speed_right);
-    //Serial.println(result);
-    
-    
-//    Serial.print("left ");
-//    Serial.print(speed_left);
-//    Serial.print("right ");
-//    Serial.println(speed_right);
+    //if the command is to change a mode
+    if(strstr(commands, "mode") != NULL) {
+      result = sscanf(commands,"{mode:%d}", &mode);
+    } else {
+      result = sscanf(commands,"{left:%d,right:%d}", &speed_left, &speed_right);
+    }
     
     have_command = 0;
-    
-    i = 0;
-    
-    //{left:34,right:93}
+    command_index = 0;
     
   }
   
@@ -166,8 +150,8 @@ void readCommand2() {
 
 void moveRobot2() {
     
-    int left = 1500 - (int)(speed_left * 1.5);
-    int right = 1500 - (int)(speed_right * 1.5);
+    int left = 1500 - (int)(speed_left * 1.25);
+    int right = 1500 - (int)(speed_right * 1.25);
     
     //Serial.println(left);
     //Serial.println(right);
@@ -176,7 +160,7 @@ void moveRobot2() {
     myservo2.writeMicroseconds(right);
     
 }
-
+/*
 void readCommand1() {
   while (Serial.available()) {
     
@@ -214,4 +198,4 @@ void moveRobot1() {
     myservo1.writeMicroseconds(left);
     myservo2.writeMicroseconds(right);
     
-}
+}*/
